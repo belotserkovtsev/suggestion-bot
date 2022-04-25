@@ -1,0 +1,21 @@
+{
+  "name": "suggestion-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "Modules/App.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "type": "module",
+  "author": "belotserkovtsev",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.26.1",
+    "install": "^0.13.0",
+    "npm": "^8.7.0",
+    "promisify": "^0.0.3",
+    "telegraf": "^4.7.0",
+    "uuid": "^8.3.2"
+  }
+}
