@@ -25,7 +25,7 @@ export class SceneService {
     }
 
     enterOfferScene(ctx) {
-        ctx.reply(`Отправь мне скрин своего сра (по аналогии с постами в канале). Обязательно файлом`).catch(() => {})
+        ctx.reply(`Отправь мне скрин своего сра (по аналогии с постами в канале). Обязательно файлом и не больше 3 штук`).catch(() => {})
 
         this.offerScene.start((ctx) => {
             this.leaveCurrentScene(ctx)
@@ -37,7 +37,15 @@ export class SceneService {
 
             if (ctx.session.uploadCount > 2) {
                 if (this.dateDiffInDays(ctx.session.lastUploadTimestamp, Date.now()) < 1) {
-                    this.leaveCurrentScene(ctx, "Можно отправлять только 3 сра в день. Не надо спамить")
+                    if (!ctx.session.lastNotifiedAboutLimit) {
+                        this.leaveCurrentScene(ctx, "Можно отправлять только 3 сра в день. Не надо спамить")
+                        ctx.session.lastNotifiedAboutLimit = Date.now()
+                    } else if (this.dateDiffInSeconds(ctx.session.lastNotifiedAboutLimit, Date.now()) < 5){
+                        this.leaveCurrentScene(ctx)
+                    } else {
+                        this.leaveCurrentScene(ctx, "Можно отправлять только 3 сра в день. Не надо спамить")
+                        ctx.session.lastNotifiedAboutLimit = Date.now()
+                    }
                     return
                 } else {
                     ctx.session.uploadCount = 0
@@ -59,12 +67,15 @@ export class SceneService {
                 console.log(err)
             })
 
-        this.offerScene.leave((ctx) => {
-            ctx.reply("Если еще есть чем поделиться - тыкай кнопки", Markup
-                .keyboard(this.defaultKeyboard)
-                .oneTime()
-                .resize())
-                .catch(() => {})
+        this.offerScene.leave(ctx => {
+            if (!ctx.session.lastNotifiedAboutOfferLeave || this.dateDiffInSeconds(ctx.session.lastNotifiedAboutOfferLeave, Date.now()) > 5) {
+                ctx.reply("Если еще есть чем поделиться - тыкай кнопки", Markup
+                    .keyboard(this.defaultKeyboard)
+                    .oneTime()
+                    .resize())
+                    .catch(() => {})
+                ctx.session.lastNotifiedAboutOfferLeave = Date.now()
+            }
         })
     }
 
@@ -79,14 +90,12 @@ export class SceneService {
 
     handlePhoto(ctx) {
         if (ctx.session.lastNotifiedAboutFile &&
-            this.dateDiffInSeconds(ctx.session.lastNotifiedAboutFile, Date.now()) < 10) {
+            this.dateDiffInSeconds(ctx.session.lastNotifiedAboutFile, Date.now()) < 5) {
             return
         }
 
+        ctx.session.lastNotifiedAboutFile = Date.now()
         ctx.reply("Пожалуйста, отправь картинку файлом. Иначе телеграм режет качество")
-            .then(() => {
-                ctx.session.lastNotifiedAboutFile = Date.now()
-            })
             .catch(() => {})
     }
 
@@ -101,7 +110,7 @@ export class SceneService {
         ctx.telegram.getFileLink(id)
             .then(url => {
                 const href = url.href
-                this.leaveCurrentScene(ctx, "Жди свой пост в канале если он не хуйня")
+                this.leaveCurrentScene(ctx)
                 return this.downloadImage(href, path)
             }).then(() => {
             return ctx.message.from.username ?
